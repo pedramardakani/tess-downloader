@@ -25,10 +25,9 @@
 set -e
 
 # Default arguments
-latest=1
 imagetype="ffir"
 prefix="tesscurl_sector"
-url="https://archive.stsci.edu/missions/tess/download_scripts/sector/"
+url="https://archive.stsci.edu/missions/tess/download_scripts/sector"
 
 help_print() {
     # Current script name
@@ -55,12 +54,6 @@ Options:
 
  -o, --output STR         Output file containing the links
                           Current value: $output
-
- --latest                 Download only the lastest image
-                          Current value: $latest
-
- --all                    Download not just the latest, but all images
-                          specified (opposite of --latest)
 
  --camera     INT         Download only data related to camera (1-4)
 
@@ -93,7 +86,7 @@ do
             ;;
         -o|--output)
             output="$2"
-            if [ x"$output" = x ]; then
+            if [ x"${output}" = x ]; then
                 echo "No argument given to '--output' ('-o')."
                 exit 1;
             fi
@@ -117,14 +110,6 @@ do
             fi
             shift # past argument
             shift # past value
-            ;;
-        --latest)
-            latest=1
-            shift # past argument
-            ;;
-        --all)
-            latest=0
-            shift # past argument
             ;;
         -h|-P|--help|--printparams)
             help_print
@@ -155,19 +140,33 @@ fi
 
 
 # Download bulk file
-filename="${prefix}_${sector}_${imagetype}.sh"
+fullname="${prefix}_${sector}_${imagetype}"
+filename="${fullname}.sh"
 if [ ! -f "$1" ]; then
-    echo "# Downloading sector ${sector} bulk file ..."
-    wget $url -O $filename
+    printf "# Downloading sector ${sector} bulk file to ${filename}\n\n"
+    wget -c "${url}/${filename}" -O ${filename}
 fi
 
 
+if [ x"$camera" != x ] && [ x"$chip" != x ]; then
+
+    grep --color=never -e "-s[0-9][0-9][0-9][0-9]-${camera}-${chip}-" \
+         ${filename} > ${output}
+    echo "#  Filtered camera ${camera} and chip ${chip} and saved to ${output}"
 
 
-# Check if we want only the lastest items
-if [ $latest -eq 1 ]; then
-    latesttime=$(tail -1 $filename | awk '{split($6, a, "-"); print a[1];}')
-    grep $latesttime $filename | awk '{print $NF}' | sort > $output
+elif [ x"$camera" != x ]; then
+
+    grep --color=never -e "-s[0-9][0-9][0-9][0-9]-${camera}-[0-4]-" \
+         ${filename} > ${output}
+    echo "#  Filtered camera ${camera} and saved to ${output} "
+
+elif [ x"$chip" != x ]; then
+
+    grep --color=never -e "-s[0-9][0-9][0-9][0-9]-[0-4]-${chip}-" \
+         ${filename} > ${output}
+    echo "#  Filtered chip ${chip} and saved to ${output} "
+
 fi
 
 
